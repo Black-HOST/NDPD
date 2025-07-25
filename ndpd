@@ -10,8 +10,8 @@
 # @version 	0.1
 # @since 	2025-07-25
 
-# Path to the ndisc6 executable
-NDISC6_PATH="/usr/sbin/ndisc6"
+# determine the path to the ndisc6 executable
+NDISC6_PATH="$(command -v ndisc6 || true)"
 
 # Ensure the script is run as root, which is required for network monitoring.
 if [[ $EUID -ne 0 ]]; then
