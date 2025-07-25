@@ -34,32 +34,22 @@ detect_package_manager() {
     else echo ""; fi
 }
 
-# Track whether EPEL was temporarily enabled
-EPEL_TEMP_ENABLED=false
-
 prepare_epel() {
     local PM
     PM=$(detect_package_manager)
 
     if [[ "$PM" == "yum" || "$PM" == "dnf" ]]; then
         if ! "$PM" repolist enabled | grep -q "^epel/"; then
-            info "EPEL repository not enabled. Installing and enabling..."
-            "$PM" install -y -q epel-release >/dev/null
-            "$PM" config-manager --set-enabled epel >/dev/null 2>&1 || true
-            EPEL_TEMP_ENABLED=true
+            if ! rpm -q epel-release &>/dev/null; then
+                info "EPEL repository not installing. Installing and disabling it..."
+                "$PM" install -y -q epel-release >/dev/null
+                sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/epel.repo
+            else
+                info "EPEL repository is installed but disabled."
+            fi
         else
             info "EPEL repository is already enabled."
         fi
-    fi
-}
-
-disable_epel_if_needed() {
-    local PM
-    PM=$(detect_package_manager)
-
-    if [[ "$EPEL_TEMP_ENABLED" == true && ( "$PM" == "yum" || "$PM" == "dnf" ) ]]; then
-        info "Disabling temporarily enabled EPEL repository..."
-        "$PM" config-manager --set-disabled epel >/dev/null 2>&1 || true
     fi
 }
 
@@ -71,11 +61,11 @@ install_package() {
 
     case "$PM" in
         apt)
-            DEBIAN_FRONTEND=noninteractive apt update -qq >/dev/null
-            DEBIAN_FRONTEND=noninteractive apt install -y -qq "$pkg" >/dev/null
+            DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$pkg" >/dev/null
             ;;
         dnf|yum)
-            "$PM" install -y -q "$pkg" >/dev/null
+            "$PM" install -y -q --enablerepo="epel" "$pkg" >/dev/null
             ;;
         pacman)
             pacman -Sy --noconfirm --quiet "$pkg" >/dev/null
@@ -122,8 +112,6 @@ uninstall_ndpd() {
     systemctl daemon-reexec
     systemctl daemon-reload
 
-    disable_epel_if_needed
-
     success "NDPD uninstalled successfully."
     exit 0
 }
@@ -145,8 +133,8 @@ fi
 # Check if ndisc6 is installed, prepare EPEL if needed
 NDISC6_PATH="$(command -v ndisc6 || true)"
 if [[ -z "$NDISC6_PATH" ]]; then
-    info "ndisc6 not found. Preparing EPEL and installing..."
     prepare_epel
+    info "ndisc6 not found. Installing..."
     install_package ndisc6
 else
     info "ndisc6 found at: $NDISC6_PATH"
@@ -167,8 +155,5 @@ systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" >/dev/null
 systemctl start "$SERVICE_NAME"
-
-# Disable EPEL if we enabled it temporarily
-disable_epel_if_needed
 
 success "NDPD installed and running!"
