@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# NDPD - Neighbor Discovery Protocol Daemon
+# 
+# A simple Bash script wrapper around `ndisc6`` that runs as a daemon. 
+# It monitors all network interfaces for newly assigned IPv6 addresses and sends an NDP (Neighbor Discovery Protocol) probe to the appropriate gateway when a new address is detected.
+# Includes support for automatic interface and gateway detection.
+#
+# @author	Black HOST Ltd.
+# @version 	0.1
+# @since 	2025-07-25
+
+# Path to the ndisc6 executable
+NDISC6_PATH="/usr/sbin/ndisc6"
+
+# Ensure the script is run as root, which is required for network monitoring.
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root" 
+	exit 1
+fi
+
+# dependecy check
+if [[ ! -x "$NDISC6_PATH" ]]; then
+	echo "Error: ndisc6 not found or not executable at ${NDISC6_PATH}."
+	echo "Please install the 'ndisc6' or 'iputils-ndisc6' package and ensure the path is correct."
+	exit 1
+fi
+
+# A simple function to send log messages to the system journal.
+log() {
+	logger -t "NDPD" "$1"
+}
+
+# trap SIGINT and SIGTERM to cleanly exit
+trap "log 'Daemon exiting'; exit 0" SIGINT SIGTERM
+
+log "Daemon started."
+
+# watch for IPv6 address changes on ALL interfaces.
+ip -6 monitor address | while read -r -a line_parts; do
+
+	# ignore deletion events
+	[[ "${line_parts[0]}" == "Deleted" ]] && continue
+
+	# fetch interface and the new IPv6 address
+	INTERFACE="${line_parts[1]}"
+	IPv6="${line_parts[3]}"
+
+	# skip if address format is malformed
+	[[ -z "$INTERFACE" || -z "$IPv6" ]] && continue
+
+	# determine the scope
+	scope=""
+	for i in "${!line_parts[@]}"; do
+		if [[ "${line_parts[$i]}" == "scope" && -n "${line_parts[$i+1]}" ]]; then
+			scope="${line_parts[$i+1]}"
+			break
+		fi
+	done
+
+	# if the scope is not global, skip to the next event.
+	if [[ "$scope" != "global" ]]; then
+		continue
+	fi
+
+	# clean the IP address by removing the prefix length (e.g., /64).
+	IP=${IPv6%%/*}
+	log "Detected new global IP ${IP} on interface ${INTERFACE}."
+
+	# determine the default IPv6 gateway for this specific interface.
+	GATEWAY=$(ip -6 route show default dev "${INTERFACE}" | awk '/via/ {print $3}')
+
+	if [[ -z "$GATEWAY" ]]; then
+		log "Could not determine default gateway for interface ${INTERFACE}. Skipping probe."
+		continue
+	fi
+
+	log "Found gateway ${GATEWAY} for ${INTERFACE}. Sending NDP probe..."
+
+	# anounce the new IP on the router by send an NDP probe
+	if "$NDISC6_PATH" "${GATEWAY}" "${INTERFACE}" -s "${IP}"; then
+		log "Successfully sent NDP probe for ${IP} via ${GATEWAY}."
+	else
+		log "ERROR: Failed to send NDP probe for ${IP}."
+	fi
+
+done
