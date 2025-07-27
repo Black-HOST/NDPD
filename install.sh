@@ -41,7 +41,7 @@ prepare_epel() {
     if [[ "$PM" == "yum" || "$PM" == "dnf" ]]; then
         if ! "$PM" repolist enabled | grep -q "^epel/"; then
             if ! rpm -q epel-release &>/dev/null; then
-                info "EPEL repository not installing. Installing and disabling it..."
+                info "EPEL repository not installed. Installing and disabling it..."
                 "$PM" install -y -q epel-release >/dev/null
                 sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/epel.repo
             else
