@@ -10,13 +10,11 @@ While NDP is a robust and well-designed system, it has some drawbacks from a use
 
 This can often be resolved by sending an outbound ping from the new IPv6 address (e.g. ping -6 -I 2a01:e940:0:242:: black.host), which prompts the OS to initiate NDP resolution and announce the new address. However, in environments like shared hosting (e.g. cPanel), IPv6 addresses may be automatically assigned. With such big address space (up to 2⁶⁴ usable IPs in a /64), manually monitoring and pinging each new address can be quite a demanding task.
 
----
 
 ## 🚀 THE SOLUTION
 
 **NDPD** is a lightweight daemon that monitors network interfaces for newly assigned global IPv6 addresses. When a new address is detected, NDPD uses `ndisc6` to send an NDP probe to the default gateway, instantly announcing the address to the network. This eliminates manual intervention, reduces downtime, and ensures seamless IPv6 connectivity in large subnets.
 
----
 
 ## 📦 INSTALLATION
 
@@ -39,7 +37,6 @@ This will:
 
 To verify NDPD is running check: `systemctl status ndpd.service`
 
----
 
 ## 📋 REQUIREMENTS
 
@@ -50,7 +47,6 @@ To verify NDPD is running check: `systemctl status ndpd.service`
   - `systemd`
 - Root privileges
 
----
 
 ## ✅ TESTED ON
 
@@ -59,7 +55,6 @@ To verify NDPD is running check: `systemctl status ndpd.service`
 - RHEL 7, 8, 9 based systems (including CentOS, AlmaLinux, Rocky Linux)
 - Other `systemd`-based Linux distributions
 
----
 
 ## 🔄 HOW IT WORKS
 
@@ -79,7 +74,6 @@ When a new **global** IPv6 address is assigned:
 - Verify the default gateway is reachable: `ip -6 route`
 - Ensure `ndisc6` is installed: `ndisc6 --version`
 
----
 
 ## 🧹 UNINSTALLATION
 
@@ -95,7 +89,6 @@ Uninstallation will:
 - Remove the script and service files
 - Reload systemd
 
----
 
 ## 🤝 CONTRIBUTING
 
