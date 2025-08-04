@@ -8,7 +8,7 @@ In IPv6, ARP (Address Resolution Protocol) was replaced by a more efficient mech
 
 While NDP is a robust and well-designed system, it has some drawbacks from a user perspective. Since NDP relies on ICMPv6 Neighbor Solicitation/Advertisement to establish address reachability, a newly added global IPv6 address might not be immediately usable, particularly for incoming traffic, until the OS announces the new address to the network or receives relevant traffic. Basicaly the gateway needs to learn which physical machine (identified by its MAC address) is using that new IP address before it can forward any incoming traffic to it.
 
-This can often be resolved by sending an outbound ping from the new IPv6 address (e.g. ping -6 -I 2a01:e940:0:242:: black.host), which prompts the OS to initiate NDP resolution and announce the new address. However, in environments like shared hosting (e.g. cPanel), IPv6 addresses may be automatically assigned. With such big address space (up to 2⁶⁴ usable IPs in a /64), manually monitoring and pinging each new address can be quite a demanding task.
+This can often be resolved by sending an outbound ping from the new IPv6 address (e.g. `ping -6 -I 2a01:e940:0:242:: black.host`), which prompts the OS to initiate NDP resolution and announce the new address. However, in environments like shared hosting (e.g. cPanel), IPv6 addresses may be automatically assigned. With such big address space (up to 2⁶⁴ usable IPs in a /64), manually monitoring and pinging each new address can be quite a demanding task.
 
 
 ## 🚀 THE SOLUTION
@@ -51,7 +51,7 @@ To verify NDPD is running check: `systemctl status ndpd.service`
 ## ✅ TESTED ON
 
 - Ubuntu 20.04, 22.04, 24.04
-- Debian 10, 11, 12
+- Debian 10, 11, 12, 13
 - RHEL 7, 8, 9 based systems (including CentOS, AlmaLinux, Rocky Linux)
 - Other `systemd`-based Linux distributions
 
